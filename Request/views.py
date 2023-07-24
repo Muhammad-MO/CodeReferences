@@ -13,13 +13,14 @@ from app.models import *
 from app.utils import *
 import logging
 from app.views import saveAppcodeData
+from rest_framework import APIviews
 
 logger = logging.getLogger('system')
 class F5error(Exception):
 
 
-@login_required
-def createrequest(request):
+ @login_required
+ def createrequest(request):
     if request.method == "POST":
         output = handlePOST(request)
         return output
@@ -79,6 +80,103 @@ def handlePOST(request):
         print(str(e))
         logger.exception(str(e))
         return JsonResponse({"message":str(e)})
+    
+@login_required
+def viewrequests(request):
+
+    data_output={}
+    all_request = Request.objects.all()
+    all_request_list = []
+    for request_info in all_request:
+        data_output = {}
+        data_output['fqdn'] = request_info.fqdn
+        data_output['appcode'] = request_info.appcode
+        data_output['lob'] = request_info.lob
+        data_output['environment'] = request_info.environment
+        data_output['zone'] = request_info.zone
+        data_output['request_id'] = request_info.request_id
+        data_output['requester'] = request_info.requester
+        invensys_data = request_info.system.values()
+        invensys_info = []
+        for data in invensys_data:
+             invensys_info.append(data['hostname'])
+             data_output['system'] = invensys_info
+             all_request_list.append(data_output)
+             print(all_request_list)
+             return render(request, "viewrequest.html",{"viewrequest":all_request_list})
+        
+class Invensysdata(APIView):
+    http_method_names = ['get', 'options']
+    def get(self, request, **kwargs):
+     try:
+         
+    appcode = request.GET.get('appcode','')
+    environment = request.GET.get('environment', '')
+    zone = request.GET.get('zone', '')
+    serverlist=Serverdata(environment,zone,appcode)
+    return Response(serverlist, status=http_status.HTTP_200_OK)
+
+    except Exception as e:
+
+    logger.exception(str(e)):
+    return Response('An error occured: {0}'.format(str(e)), status=http_status.HTTP_500_INTERNAL_SEVER_ERROR)
+
+
+class Appcodelob(APIView)
+
+      http_method_names = ['get', 'options']
+      def get(self, request, **kwargs):
+        try:
+            
+            appcode = request.GET.get('appcode', '')
+            appcode_lob_list = Application.objects.filter(appcode=appcode)
+            appcode1 = appcode_lob_list[0]
+            lobdata = {'lob':appcode1.lob.name}
+            return Reponse(lobdata, status=http_status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response("An error occured:{0}").format(str(e),status=http_status.HTTP_500_INTERNAL_SEVER_ERROR)
+
+def Serverdata(environment, zone, appcode):
+    serverinfo_list = Invensys.objects.filter(appcode_appcode=appcode, environment=environment,zone=zone)
+    serverlist=[]
+    for servers in serverinfo_list:
+        serverlist.append(server.hostname)
+    print(serverlist)
+    return serverlist
+
+class Requestdetails(APIView):
+    http_method_names = ['get', 'kwargs']
+    def get(self, request, **kwargs):
+        try:
+            requestid = request.GET.get("request_id", '')
+            requestdetail = Request.objects.get(request_id=requestid)
+            eachrequest = {
+
+                    'Appcode':requestdetail.appcode,
+                    'FQDN':requestdetail.fqdn,
+                    'Environment':requestdetail.environment,
+                    'Zone':requestdetail.zone,
+                    'Lob':requestdetail.lob,
+                    'Requestid':requestdetail.request_id,
+                    'Requester':requestdetail.requester,
+                    'Requested Data':requestdetail.requested_data,
+
+            }
+
+            return Response(eachrequest, status=http_status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+        return Response("An error occured:{0}").format(str(e),status=http_status.HTTP_500_INTERNAL_SEVER_ERROR)
+
+    
+
+
+        
+        
+
+
+
 
          
         
